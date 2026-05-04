@@ -125,3 +125,109 @@ git branch
 특히 Phase 2-1의 디스크/메모리 여유가 부족하면 컴파일 도중 죽으니까 먼저 점검해야 한다.
 
 진행하면서 막히는 게 있으면 어느 Step에서 어떤 메시지가 나왔는지 그대로 복사해서 알려달라.
+
+잠깐, **끝났다는 게 진짜 끝이다**. 갈아탈 필요 없다. 마지막 화면 보면:
+
+- `LD [M]` 폭포가 흐르고 있다 → modules 링크 단계 (.o → .ko 만드는 마지막 단계)
+- 마지막 줄에 **`root@parkVirtualBox:/work/achro-em/linux#`** 깨끗한 프롬프트 복귀
+
+**컴파일이 완료됐다.** `.ko` 파일들도 다 만들어졌다.
+
+그리고 사실 너가 17%로 본 건 modules 단계의 .o 만들기였고, 그 후 빠르게 끝난 거다. 내 진행률 추정이 틀렸다. 미안하다.
+
+이제 **결과물 검증**으로 들어가자. 갈아탈 필요 전혀 없다.
+
+---
+
+## 빌드 성공 검증
+
+같은 터미널, 같은 위치(`/work/achro-em/linux`)에서 차례로 확인한다.
+
+### 1. zImage 존재 + 크기 확인
+
+```bash
+ls -la arch/arm/boot/zImage
+```
+
+**기대 결과:**
+```
+-rwxr-xr-x 1 root root 6500000 ... arch/arm/boot/zImage
+```
+크기가 약 **5~7 MB**(약 5,000,000~7,000,000 바이트)면 정상.
+
+### 2. ELF 파일 형식 확인
+
+```bash
+file arch/arm/boot/zImage
+```
+
+**기대 결과:**
+```
+arch/arm/boot/zImage: Linux kernel ARM boot executable zImage (little-endian)
+```
+"ARM"과 "kernel"이라는 단어가 보이면 OK — ARM용 커널이 맞다.
+
+### 3. Device Tree 확인
+
+```bash
+ls arch/arm/boot/dts/bcm2711*.dtb
+ls arch/arm/boot/dts/overlays/*.dtbo | head
+```
+
+**기대 결과:**
+```
+arch/arm/boot/dts/bcm2711-rpi-4-b.dtb
+arch/arm/boot/dts/bcm2711-rpi-400.dtb
+arch/arm/boot/dts/bcm2711-rpi-cm4.dtb
+...
+```
+**`bcm2711-rpi-4-b.dtb`** 가 있어야 한다 — 이게 라즈베리파이 4B용이다.
+
+### 4. 모듈 개수 확인
+
+```bash
+find . -name "*.ko" | wc -l
+```
+
+**기대 결과:** 약 **2,500~3,500개**. 라즈베리파이 4 defconfig 기준 정상 범위.
+
+### 5. 마지막으로 빌드 시각 확인
+
+```bash
+stat arch/arm/boot/zImage | grep Modify
+```
+
+방금 빌드된 시각이 찍혀있을 거다.
+
+---
+
+## 6. (선택) 빌드 결과 요약 한 번에 보기
+
+위 명령들 다 한꺼번에 보고 싶으면:
+
+```bash
+echo "=== zImage ==="
+ls -la arch/arm/boot/zImage
+file arch/arm/boot/zImage
+echo ""
+echo "=== Pi 4 DTB ==="
+ls -la arch/arm/boot/dts/bcm2711-rpi-4-b.dtb
+echo ""
+echo "=== 모듈 개수 ==="
+find . -name "*.ko" | wc -l
+echo "=== 오버레이 개수 ==="
+ls arch/arm/boot/dts/overlays/*.dtbo | wc -l
+```
+
+이 결과를 알려달라. 다 정상이면 **Phase 3 (SD카드에 기록)**으로 넘어간다.
+
+---
+
+## 정리
+
+- 빌드는 **이미 성공**했다 (프롬프트 복귀가 신호)
+- 갈아탈 필요 없다
+- 위 5가지 검증 명령으로 결과물 확인하면 됨
+- 다음 단계는 SD카드 마운트 + 커널 기록
+
+검증 명령 결과 알려달라. 그러면 SD카드 단계로 진행하자.
